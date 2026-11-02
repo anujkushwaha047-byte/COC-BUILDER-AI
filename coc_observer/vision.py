@@ -1,8 +1,10 @@
 """OCR-backed, conservative extraction of visible village HUD information."""
 
 import re
+from pathlib import Path
 from typing import Iterable, List, Optional
 
+from .farming import LootOpportunity
 from .models import Observation, Reading
 
 RESOURCE_NAMES = ("gold", "elixir", "dark_elixir", "gems")
@@ -150,3 +152,66 @@ def observe_frame(frame, width: int, height: int) -> Observation:
         "Obstacle and collection-indicator recognition is unavailable without a validated game-specific vision model."
     )
     return observation
+
+
+def observe_loot_screenshot(path: Path, village: str) -> LootOpportunity:
+    """Read loot only when a resource label can be associated with an OCR number."""
+    try:
+        import cv2
+    except ImportError as exc:
+        raise RuntimeError("OpenCV dependency missing; install requirements.txt.") from exc
+    image = cv2.imread(str(path))
+    if image is None:
+        raise RuntimeError("The selected file is not a readable image.")
+    frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    words = _read_words(frame)
+    labels = {
+        "gold": {"gold"},
+        "elixir": {"elixir"},
+        "dark_elixir": {"dark", "elixir"},
+    }
+    values = {"gold": None, "elixir": None, "dark_elixir": None}
+    confidences = {}
+    for resource, aliases in labels.items():
+        candidates = [
+            word for word in words
+            if word["text"].lower().strip(":") in aliases
+            and (resource != "dark_elixir" or "dark" in word["text"].lower())
+        ]
+        if resource == "dark_elixir":
+            candidates = [
+                word for word in words
+                if word["text"].lower().strip(":") == "dark"
+                and any(
+                    other["text"].lower().strip(":") == "elixir"
+                    and abs(other["y"] - word["y"]) < 40
+                    for other in words
+                )
+            ]
+        for label in candidates:
+            numbers = [
+                word for word in words
+                if NUMBER_RE.fullmatch(word["text"].replace(",", ""))
+                and abs(word["x"] - label["x"]) <= frame.shape[1] * 0.2
+                and abs(word["y"] - label["y"]) <= frame.shape[0] * 0.12
+            ]
+            if numbers:
+                nearest = min(
+                    numbers,
+                    key=lambda word: abs(word["x"] - label["x"]) + abs(word["y"] - label["y"]),
+                )
+                value = _parse_amount(nearest["text"])
+                if value is not None:
+                    values[resource] = value
+                    confidences[resource] = min(label["confidence"], nearest["confidence"])
+                    break
+    known_confidences = list(confidences.values())
+    return LootOpportunity(
+        village=village,
+        gold=values["gold"],
+        elixir=values["elixir"],
+        dark_elixir=values["dark_elixir"],
+        confidence=min(known_confidences) if known_confidences else 0.0,
+        source="local screenshot OCR; resource labels required",
+        resource_confidence=confidences,
+    )
