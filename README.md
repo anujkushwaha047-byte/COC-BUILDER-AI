@@ -10,13 +10,21 @@ stored.
 
 1. Install Python 3.10 or later.
 2. Install [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) and
-   ensure `tesseract.exe` is on `PATH`.
+   ensure `tesseract.exe` is on `PATH`. On Windows, it can also be installed with:
+
+   ```powershell
+   winget install --id UB-Mannheim.TesseractOCR --exact
+   ```
+
 3. From this project directory, run:
 
    ```powershell
    py -m pip install -r requirements.txt
    py main.py
    ```
+
+This is a Tkinter desktop application, not a Node.js web project. Run it with
+`py main.py`; `npm run dev` and a localhost URL do not apply.
 
 Show the game on the primary display before launching. The dashboard observes
 that display every five seconds. Close the dashboard to stop observation.

@@ -1,6 +1,8 @@
 """OCR-backed, conservative extraction of visible village HUD information."""
 
+import os
 import re
+import shutil
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -22,6 +24,12 @@ def _read_words(frame) -> List[dict]:
         from pytesseract import Output
     except ImportError as exc:
         raise RuntimeError("OCR dependency missing; install requirements.txt.") from exc
+
+    if not shutil.which(pytesseract.pytesseract.tesseract_cmd):
+        program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+        installed_tesseract = Path(program_files) / "Tesseract-OCR" / "tesseract.exe"
+        if installed_tesseract.is_file():
+            pytesseract.pytesseract.tesseract_cmd = str(installed_tesseract)
 
     try:
         raw = pytesseract.image_to_data(

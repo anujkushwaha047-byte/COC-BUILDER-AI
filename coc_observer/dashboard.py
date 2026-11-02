@@ -27,6 +27,9 @@ class Dashboard:
         self.results = queue.Queue()
         self.running = False
         self.observations = {"home": None, "builder_base": None}
+        self.resource_labels = {}
+        self.village_details = {}
+        self.village_warnings = {}
         self.mission_settings = self.store.load_mission_settings()
         root.title("CoC Builder AI — Read-only Village Planner")
         root.geometry("1180x800")
