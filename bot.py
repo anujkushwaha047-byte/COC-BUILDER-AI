@@ -48,7 +48,7 @@ def run_simple_bot():
 
       # Step 5: 'Return Home' click
       print("[+] Returning home...")
-      safe_click(650, 750)
+      safe_click(600, 700)
       time.sleep(5)
 
   except KeyboardInterrupt:
